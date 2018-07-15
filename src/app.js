@@ -225,7 +225,7 @@
   }
 
   function selectRoute(hash) {
-    const selectedRoute = root.querySelector(`a[href="${hash}"]`) || AllRouteLink;
+    const selectedRoute = root.querySelector(`a[href="${hash}"]`) || AllRouteLink ||
       (AllRouteLink = root.querySelector(`a[href="#/"]`));
     const lastSelectedRoute = root.querySelector(`.filters a.selected`);
     lastSelectedRoute.classList.remove('selected');
