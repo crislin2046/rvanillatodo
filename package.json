@@ -1,6 +1,6 @@
 {
   "name": "brutalist-todomvc",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "TodoMVC in Brutal.js",
   "main": "index.js",
   "scripts": {
