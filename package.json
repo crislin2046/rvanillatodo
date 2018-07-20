@@ -1,0 +1,28 @@
+{
+  "name": "brutalist-todomvc",
+  "version": "1.0.0",
+  "description": "TodoMVC in Brutal.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "node serve -s src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dosyago-coder-0/rvanillatodo.git"
+  },
+  "keywords": [
+    "dosy",
+    "todomvc",
+    "brutal.js",
+    "dosyago"
+  ],
+  "author": "@dosy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dosyago-coder-0/rvanillatodo/issues"
+  },
+  "homepage": "https://github.com/dosyago-coder-0/rvanillatodo#readme",
+  "devDependencies": {
+    "serve": "^9.3.0"
+  }
+}

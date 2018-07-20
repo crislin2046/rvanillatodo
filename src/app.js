@@ -54,7 +54,7 @@
         <div class="view">
           <input class="toggle" type="checkbox" 
             ${completed ? 'checked':''} click=${() => toggleCompleted(key)}>
-          <label dblclick=${() => editTodo(key)}>${text}</label>
+          <label select=${() => editTodo(key)} dblclick=${() => editTodo(key)}>${text}</label>
           <button class="destroy" click=${() => deleteTodo(key)}></button>
         </div>
         ${editing ? R`<input class=edit value=${text}
@@ -139,6 +139,7 @@
 
   function editTodo(todoKey) {
     const todo = todos.find(({key}) => key == todoKey);
+    if ( todo.editing ) return;
     todo.editing = true;
     updateTodo(todo);
     const editor = root.querySelector('.edit');
