@@ -209,7 +209,7 @@
     if ( keyEvent.key !== 'Enter' ) {
       return;
     }
-    const {srcElement:source} = keyEvent;
+    const {target:source} = keyEvent;
     const text = source.value.trim();
     if ( ! text ) {
       return; 
