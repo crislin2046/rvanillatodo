@@ -2,6 +2,7 @@
 {
   const root = document.querySelector('.todoapp');
   const todos = load();
+  const session = Math.random()+'';
   let AllRouteLink;
   let keyCounter = 0;
 
@@ -54,7 +55,7 @@
         <div class="view">
           <input class="toggle" type="checkbox" 
             ${completed ? 'checked':''} click=${() => toggleCompleted(key)}>
-          <label select=${() => editTodo(key)} dblclick=${() => editTodo(key)}>${text}</label>
+          <label touchstart=${() => editTodo(key)} dblclick=${() => editTodo(key)}>${text}</label>
           <button class="destroy" click=${() => deleteTodo(key)}></button>
         </div>
         ${editing ? R`<input class=edit value=${text}
@@ -85,7 +86,7 @@
   }
 
   function newKey(prefix) {
-    return `key-${prefix ? prefix + '-' : ''}${keyCounter++}`;
+    return `key-${prefix ? prefix + '-' : ''}${session}-${keyCounter++}`;
   }
 
   function load() {

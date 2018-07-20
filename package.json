@@ -4,7 +4,7 @@
   "description": "TodoMVC in Brutal.js",
   "main": "index.js",
   "scripts": {
-    "start": "node serve -s src"
+    "start": "serve -p 8080"
   },
   "repository": {
     "type": "git",
@@ -21,8 +21,5 @@
   "bugs": {
     "url": "https://github.com/dosyago-coder-0/rvanillatodo/issues"
   },
-  "homepage": "https://github.com/dosyago-coder-0/rvanillatodo#readme",
-  "devDependencies": {
-    "serve": "^9.3.0"
-  }
+  "homepage": "https://github.com/dosyago-coder-0/rvanillatodo#readme"
 }
