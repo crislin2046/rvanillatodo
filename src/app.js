@@ -14,6 +14,12 @@
     routeHash();
   }
 
+  function changeHash(e) {
+    e.preventDefault();
+    history.replaceState(null,null,e.target.href);
+    routeHash(location.hash);
+  }
+
   function App() {
     return R`
       <header class="header">
@@ -30,13 +36,13 @@
           <span class="todo-count"></span>
           <ul class="filters">
             <li>
-              <a href="#/" class="selected">All</a>
+              <a href="#/" click=${changeHash} class="selected">All</a>
             </li>
             <li>
-              <a href="#/active">Active</a>
+              <a href="#/active" click=${changeHash}>Active</a>
             </li>
             <li>
-              <a href="#/completed">Completed</a>
+              <a href="#/completed" click=${changeHash}>Completed</a>
             </li>
           </ul>
           <button class="clear-completed" click=${deleteCompleted}>Clear completed</button>
