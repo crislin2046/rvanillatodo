@@ -88,16 +88,18 @@
 
   function makeTextNodeUpdater({node,index,lengths,valIndex}) {
     let oldNodes = [node];
+    let lastAnchor = node;
     return (newVal) => {
       switch(typeof newVal) {
         case "object":
-          console.log(newVal.nodes.length);
           if ( !! newVal.nodes.length ) {
-            if ( sameNodes(oldNodes,newVal.nodes) ) return;
-            const anchorNode = oldNodes[0];
-            console.log(oldNodes,anchorNode);
-            newVal.nodes.forEach(n => anchorNode.parentNode.insertBefore(n,anchorNode.nextSibling));
-            oldNodes.forEach(n => n.remove());
+            newVal.nodes.forEach(n => lastAnchor.parentNode.insertBefore(n,lastAnchor.nextSibling));
+            const dn = diffNodes(oldNodes,newVal.nodes);
+            if ( dn.size ) {
+              const f = document.createDocumentFragment();
+              dn.forEach(n => f.appendChild(n));
+            }
+            lastAnchor = newVal.nodes[0];
             oldNodes = newVal.nodes;
           }
           break;
@@ -259,12 +261,13 @@
     this.externals.forEach(f => f());
   }
 
-  function sameNodes(a,b) {
-    return a.length == b.length && a.every((node,index) => node === b[index])
+  function diffNodes(last,next) {
+    last = new Set(last);
+    next = new Set(next);
+    return new Set([...last].filter(n => !next.has(n)));
   }
 
   function update(newVals) {
-    console.log(newVals);
     this.v.forEach(({vi,replacers}) => replacers.forEach(f => f(newVals[vi])));
   }
 
