@@ -131,7 +131,7 @@
 
   function makeAttributeUpdater({node,index,name,externals,lengths,oldLengths,valIndex}) {
     let oldVal = {length: KEYLEN};
-    let originalLengthBefore = Math.max(0,valIndex-1)*KEYLEN;
+    const originalLengthBefore = Math.max(0,Object.keys(lengths).length-1)*KEYLEN;
     return (newVal) => {
       switch(typeof newVal) {
         case "function":
@@ -154,12 +154,11 @@
         default:
           const attr = node.getAttribute(name);
           if ( attr !== newVal ) {
-            const lengthBefore = lengths.reduce((sum,x,i) => i < valIndex ? sum + x : sum, 0) || 0;
             lengths[valIndex] = newVal.length;
 
-            const correction = lengthBefore-originalLengthBefore;
-            const before = attr.slice(0,index+lengthBefore-originalLengthBefore);
-            const after = attr.slice(index+(lengthBefore-originalLengthBefore)+oldVal.length);
+            const correction = -originalLengthBefore;
+            const before = attr.slice(0,index+correction);
+            const after = attr.slice(index+correction+oldVal.length);
 
             node.setAttribute(name,before + newVal + after);
 

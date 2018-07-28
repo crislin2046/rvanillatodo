@@ -71,7 +71,7 @@ import {R} from './r.js';
 
   function Todo({key,text,completed,editing}) {
     return R`${{key}}
-      <li data-key=${key} class=${editing ? 'editing' : completed ? 'completed' : 'active'}>
+      <li data-key=${key} class="${editing ? 'editing ' : ''}${completed ? 'completed' : 'active'}">
         <div class="view">
           <input class="toggle" type="checkbox" 
             ${completed ? 'checked':''} click=${() => toggleCompleted(key)}>
@@ -162,9 +162,6 @@ import {R} from './r.js';
     if ( todo.editing ) return;
     todo.editing = true;
     updateTodo(todo);
-    const editor = root.querySelector('.edit');
-    editor.focus();
-    editor.selectionStart = editor.selectionEnd = editor.value.length;
   }
 
   function deleteTodo(todoKey) {
