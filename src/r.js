@@ -113,19 +113,17 @@
   }
 
   function handleElementNode({node,vmap,externals}) {
-    const lengths = [];
-    const oldLengths = [];
     const attrs = [...node.attributes]; 
     attrs.forEach(({name,value}) => {
       let result;
+      const attributeVals = [];
       while( result = KEYMATCH.exec(value) ) {
         const {index} = result;
-        const key = result[1];
-        const val = vmap[key];
-        const replacer = makeAttributeUpdater({node,index,name,externals,lengths,oldLengths,valIndex:val.vi});
-        replacer(val.val);
-        val.replacers.push( replacer );
+        const val = vmap[result[1]];
+        attributeVals.push({index,val});
       }
+      const replacer = makeAttributeUpdater({vmap,attributeVals,node,index,name,externals,valIndex:val.vi});
+      replacer(vmap);
     });
   }
 
