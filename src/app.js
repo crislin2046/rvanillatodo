@@ -1,15 +1,23 @@
 "use strict";
+import {R} from './r.js';
 {
   const root = document.querySelector('.todoapp');
   const todos = load();
   const session = Math.random()+'';
-  let AllRouteLink;
   let keyCounter = 0;
+  const firstList = [ 
+    {
+      key: newKey('todo'),
+      text: 'nothing',
+      completed: false,
+      editing: false
+    }];
+  let AllRouteLink;
 
   openApp();
 
   function openApp() {
-    render(App(), root);
+    App().to(root,'innerHTML');
     addEventListener('hashchange', routeHash);
     routeHash();
   }
@@ -31,7 +39,9 @@
       <section style="display:none" class="main">
         <input id="toggle-all" class="toggle-all" type="checkbox" click=${toggleAll}>
         <label for="toggle-all">Mark all as complete</label>
-        <ul class="todo-list"></ul>
+        <ul class=todo-list>
+          ${TodoList(firstList)}
+        </ul>
         <footer class="footer">
           <span class="todo-count"></span>
           <ul class="filters">
@@ -52,11 +62,15 @@
   }
 
   function TodoList(list) {
-    return R`${list.map(todo => Todo(todo))}`
+    const retVal = R`
+      <!-- Todo List-->
+      ${list.map(Todo)}
+    `;
+    return retVal;
   }
 
   function Todo({key,text,completed,editing}) {
-    return R`
+    return R`${{key}}
       <li data-key=${key} class=${editing ? 'editing' : completed ? 'completed' : 'active'}>
         <div class="view">
           <input class="toggle" type="checkbox" 
@@ -105,7 +119,7 @@
 
   function updateList(list = todos) {
     save();
-    render(TodoList(list), root.querySelector('.todo-list')); 
+    TodoList(list);
     updateTodoCount();
     hideControlsIfEmpty();
   }
@@ -113,15 +127,14 @@
   function updateTodo(todo) {
     save();
     const node = root.querySelector(`[data-key="${todo.key}"]`);
-    const newTodo = Todo(todo);
-    render(newTodo, node, {replace:true});
+    Todo(todo);
     updateTodoCount();
   }
 
   function updateTodoCount() {
     const activeCount = todos.filter(t => !t.completed).length
     const node = root.querySelector('.todo-count');
-    render(TodoCount({activeCount}), node, {replace:true});
+    TodoCount({activeCount});
     hideClearIfNoCompleted(activeCount);
   }
 
