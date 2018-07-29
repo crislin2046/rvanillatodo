@@ -43,7 +43,9 @@ import {R} from './r.js';
           ${TodoList(firstList)}
         </ul>
         <footer class="footer">
-          <span class="todo-count"></span>
+          <span class="todo-count">
+            ${TodoCount({activeCount:0})}
+          </span>
           <ul class="filters">
             <li>
               <a href="#/" click=${changeHash} class="selected">All</a>
@@ -55,7 +57,7 @@ import {R} from './r.js';
               <a href="#/completed" click=${changeHash}>Completed</a>
             </li>
           </ul>
-          <button class="clear-completed" click=${deleteCompleted}>Clear completed</button>
+          <button click="${deleteCompleted}" class=clear-completed>Clear completed</button>
         </footer>
       </section>
     `;
@@ -69,12 +71,15 @@ import {R} from './r.js';
     return retVal;
   }
 
-  function Todo({key,text,completed,editing}) {
+  function Todo({key,text,completed,active,editing}) {
     return R`${{key}}
-      <li data-key=${key} class="${editing ? 'editing ' : ''}${completed ? 'completed' : 'active'}">
+      <li data-key=${key} class="${
+          completed ? 'completed' : ''} ${
+          active ? 'active' : ''} ${
+          editing ? 'editing' : ''}">
         <div class="view">
           <input class="toggle" type="checkbox" 
-            ${completed ? 'checked':''} click=${() => toggleCompleted(key)}>
+            ${completed ? 'checked':''} input=${e => toggleCompleted(e,key)}>
           <label touchstart=${() => editTodo(key)} dblclick=${() => editTodo(key)}>${text}</label>
           <button class="destroy" click=${() => deleteTodo(key)}></button>
         </div>
@@ -97,6 +102,7 @@ import {R} from './r.js';
   }
 
   function routeHash() {
+    //console.log(location.hash);
     switch(location.hash) {
       case "#/active":                listActive(); break;
       case "#/completed":             listCompleted(); break;
@@ -133,7 +139,6 @@ import {R} from './r.js';
 
   function updateTodoCount() {
     const activeCount = todos.filter(t => !t.completed).length
-    const node = root.querySelector('.todo-count');
     TodoCount({activeCount});
     hideClearIfNoCompleted(activeCount);
   }
@@ -151,10 +156,18 @@ import {R} from './r.js';
     routeHash();
   }
 
-  function toggleCompleted(todoKey) {
+  function toggleCompleted({target},todoKey) {
+    const checked = target.checked;
+    console.log(target,checked);
     const todo = todos.find(({key}) => key == todoKey);
-    todo.completed = !!(todo.completed ^ true);
-    routeHash();
+    todo.completed = target.checked;
+    if ( ! todo.completed ) {
+      todo.active = true;
+    } else {
+      todo.active = false;
+    }
+    Todo(todo);
+    //routeHash();
   }
 
   function editTodo(todoKey) {

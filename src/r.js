@@ -48,7 +48,9 @@
     const frag = toDOM(str);
     const walker = document.createTreeWalker(frag, NodeFilter.SHOW_ALL);
 
-    do makeUpdaters({walker,vmap,externals}); while(walker.nextNode())
+    do {
+      makeUpdaters({walker,vmap,externals});
+    } while(walker.nextNode())
 
     const retVal = {externals,v:Object.values(vmap),to,
       update,code:CODE,nodes:[...frag.childNodes]};
@@ -67,12 +69,14 @@
         handleElementNode({node,vmap,externals});
       break;
       case Node.TEXT_NODE:
-        handleTextNode({node,vmap});
+        handleTextNode({node,vmap,externals});
+      break;
+      default:
       break;
     }
   }
 
-  function handleTextNode({node,vmap}) {
+  function handleTextNode({node,vmap,externals}) {
     const lengths = [];
     const text = node.wholeText; 
     let result;
@@ -80,16 +84,17 @@
       const {index} = result;
       const key = result[1];
       const val = vmap[key];
-      const replacer = makeTextNodeUpdater({node,index,lengths,valIndex:val.vi});
-      replacer(val.val);
+      const replacer = makeTextNodeUpdater({node,index,lengths,val,valIndex:val.vi});
+      externals.push(() => replacer(val.val));
       val.replacers.push( replacer );
     }
   }
 
-  function makeTextNodeUpdater({node,index,lengths,valIndex}) {
+  function makeTextNodeUpdater({node,index,lengths,valIndex,val}) {
     let oldNodes = [node];
     let lastAnchor = node;
     return (newVal) => {
+      val.val = newVal;
       switch(typeof newVal) {
         case "object":
           if ( !! newVal.nodes.length ) {
@@ -102,9 +107,12 @@
             lastAnchor = newVal.nodes[0];
             oldNodes = newVal.nodes;
           }
+          while ( newVal.externals.length ) {
+            newVal.externals.shift()(); 
+          } 
           break;
         default:
-          const lengthBefore = lengths.reduce((sum,x) => sum + (x || 0), 0);
+          const lengthBefore = lengths.slice(0,valIndex).reduce((sum,x) => sum + x, 0);
           node.nodeValue = newVal;
           lengths[valIndex] = newVal.length;
           break;
@@ -115,55 +123,89 @@
   function handleElementNode({node,vmap,externals}) {
     const attrs = [...node.attributes]; 
     attrs.forEach(({name,value}) => {
+      const lengths = [];
       let result;
-      const attributeVals = [];
+      while( result = KEYMATCH.exec(name) ) {
+        const {index} = result;
+        const key = result[1];
+        const val = vmap[key];
+        const replacer = makeAttributeUpdater(
+          {updateName:true,val,node,index,name,externals,lengths,valIndex:val.vi});
+        externals.push(() => replacer(val.val));
+        val.replacers.push( replacer );
+      }
       while( result = KEYMATCH.exec(value) ) {
         const {index} = result;
-        const val = vmap[result[1]];
-        attributeVals.push({index,val});
+        const key = result[1];
+        const val = vmap[key];
+        const replacer = makeAttributeUpdater({val,node,index,name,externals,lengths,valIndex:val.vi});
+        externals.push(() => replacer(val.val));
+        val.replacers.push( replacer );
       }
-      const replacer = makeAttributeUpdater({vmap,attributeVals,node,index,name,externals,valIndex:val.vi});
-      replacer(vmap);
     });
   }
 
-  function makeAttributeUpdater({node,index,name,externals,lengths,oldLengths,valIndex}) {
+  function makeAttributeUpdater({
+    updateName: updateName = false,node,index,name,val,externals,lengths,oldLengths,valIndex}) {
     let oldVal = {length: KEYLEN};
-    const originalLengthBefore = Math.max(0,Object.keys(lengths).length-1)*KEYLEN;
-    return (newVal) => {
-      switch(typeof newVal) {
-        case "function":
-          if ( name !== 'bond' ) {
-            if ( !! oldVal ) {
-              node.removeEventListener(name, oldVal);
-            }
-            node.addEventListener(name, newVal); 
-          } else {
-            if ( !! oldVal ) {
-              const index = externals.indexOf(oldVal);
-              if ( index >= 0 ) {
-                externals.splice(index,1);
+    let oldName = name;
+    if ( updateName ) {
+      return (newVal) => {
+        val.val = newVal;
+        switch(typeof newVal) {
+          default:
+            const attr = node.hasAttribute(oldName) ? oldName : ''
+            if ( attr !== newVal ) {
+              if ( !! attr ) {
+                node.removeAttribute(oldName);
               }
+              if ( !! newVal ) {
+                node.setAttribute(newVal,''); 
+              }
+              oldName = newVal;
             }
-            externals.push(() => newVal(node)); 
-          }
-          oldVal = newVal;
-        break;
-        default:
-          const attr = node.getAttribute(name);
-          if ( attr !== newVal ) {
-            lengths[valIndex] = newVal.length;
-
-            const correction = -originalLengthBefore;
-            const before = attr.slice(0,index+correction);
-            const after = attr.slice(index+correction+oldVal.length);
-
-            node.setAttribute(name,before + newVal + after);
-
+        }
+      };
+    } else {
+      return (newVal) => {
+        const originalLengthBefore = Object.keys(lengths.slice(0,valIndex)).length*KEYLEN;
+        lengths[valIndex] = newVal.length;
+        val.val = newVal;
+        switch(typeof newVal) {
+          case "function":
+            if ( name !== 'bond' ) {
+              if ( !! oldVal ) {
+                node.removeEventListener(name, oldVal);
+              }
+              node.addEventListener(name, newVal); 
+            } else {
+              if ( !! oldVal ) {
+                const index = externals.indexOf(oldVal);
+                if ( index >= 0 ) {
+                  externals.splice(index,1);
+                }
+              }
+              externals.push(() => newVal(node)); 
+            }
             oldVal = newVal;
-          }
-      }
-    };
+          break;
+          default:
+            const attr = node.getAttribute(name);
+            if ( attr !== newVal ) {
+              const lengthBefore = lengths.slice(0,valIndex).reduce((sum,x) => sum + x, 0);
+
+              const correction = lengthBefore-originalLengthBefore;
+              const before = attr.slice(0,index+correction);
+              const after = attr.slice(index+correction+oldVal.length);
+
+              //console.log(JSON.stringify({name,originalLengthBefore,lengthBefore,correction,index,attr,before,after,newVal,lengths,valIndex},null,2));
+              node.setAttribute(name,before + newVal + after);
+
+              oldVal = newVal;
+            }
+        }
+      };
+    }
   }
 
   function isCached(cacheKey,v,instanceKey) {
@@ -190,9 +232,11 @@
           }
         }
       } else {
-        cached.update(v);
         firstCall = false;
       }
+    }
+    if ( ! firstCall ) {
+      cached.update(v);
     }
     return {cached,firstCall};
   }
@@ -255,7 +299,9 @@
     } catch(e) {
       die({error: INSERT()},e);
     }
-    this.externals.forEach(f => f());
+    while(this.externals.length) {
+      this.externals.shift()();
+    }
   }
 
   function diffNodes(last,next) {
