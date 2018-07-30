@@ -99,14 +99,18 @@
         case "object":
           if ( !! newVal.nodes.length ) {
             newVal.nodes.forEach(n => lastAnchor.parentNode.insertBefore(n,lastAnchor.nextSibling));
-            const dn = diffNodes(oldNodes,newVal.nodes);
-            if ( dn.size ) {
-              const f = document.createDocumentFragment();
-              dn.forEach(n => f.appendChild(n));
-            }
             lastAnchor = newVal.nodes[0];
-            oldNodes = newVal.nodes;
+          } else {
+            const placeholderNode = toDOM(`<meta name=placeholder>`).firstElementChild;
+            lastAnchor.parentNode.insertBefore(placeholderNode,lastAnchor.nextSibling);
+            lastAnchor = placeholderNode;
           }
+          const dn = diffNodes(oldNodes,newVal.nodes);
+          if ( dn.size ) {
+            const f = document.createDocumentFragment();
+            dn.forEach(n => f.appendChild(n));
+          }
+          oldNodes = newVal.nodes;
           while ( newVal.externals.length ) {
             newVal.externals.shift()(); 
           } 
