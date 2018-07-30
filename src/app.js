@@ -153,12 +153,11 @@ import {R} from './r.js';
 
   function addTodo(todo) {
     todos.push(todo);
-    routeHash();
+    Todo(todo).to('.todo-list', 'afterBegin');
   }
 
   function toggleCompleted({target},todoKey) {
     const checked = target.checked;
-    console.log(target,checked);
     const todo = todos.find(({key}) => key == todoKey);
     todo.completed = target.checked;
     if ( ! todo.completed ) {
@@ -166,8 +165,8 @@ import {R} from './r.js';
     } else {
       todo.active = false;
     }
+    save();
     Todo(todo);
-    //routeHash();
   }
 
   function editTodo(todoKey) {
@@ -180,7 +179,6 @@ import {R} from './r.js';
   function deleteTodo(todoKey) {
     const index = todos.findIndex(({key}) => key == todoKey);
     todos.splice(index,1); 
-    routeHash();
   }
 
   function saveTodo(todoKey) {
@@ -201,12 +199,11 @@ import {R} from './r.js';
   function deleteCompleted() {
     const completed = todos.filter(({completed}) => completed);
     completed.forEach(({key}) => deleteTodo(key));
-    routeHash();
   }
 
   function toggleAll({target:{checked}}) {
     todos.forEach(t => t.completed = !!checked);
-    routeHash();
+    todos.forEach(t => Todo(t));
   }
 
   function listAll() {
