@@ -57,7 +57,7 @@ import {R} from './r.js';
               <a href="#/completed" click=${changeHash}>Completed</a>
             </li>
           </ul>
-          <button click="${deleteCompleted}" class=clear-completed>Clear completed</button>
+          <button click="${clearCompleted}" class=clear-completed>Clear completed</button>
         </footer>
       </section>
     `;
@@ -179,6 +179,7 @@ import {R} from './r.js';
   function deleteTodo(todoKey) {
     const index = todos.findIndex(({key}) => key == todoKey);
     todos.splice(index,1); 
+    save();
   }
 
   function saveTodo(todoKey) {
@@ -196,9 +197,10 @@ import {R} from './r.js';
     updateTodo(todo);
   }
 
-  function deleteCompleted() {
+  function clearCompleted() {
     const completed = todos.filter(({completed}) => completed);
     completed.forEach(({key}) => deleteTodo(key));
+    TodoList(todos);
   }
 
   function toggleAll({target:{checked}}) {
