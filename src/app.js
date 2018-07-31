@@ -64,6 +64,11 @@ import {R} from './r.js';
     return retVal;
   }
 
+  function takeFocus(el) {
+    el.focus();
+    el.selectionStart = el.selectionEnd = el.value.length;
+  }
+
   function Todo({key,text,completed,active,editing}) {
     return R`${{key}}
       <li data-key=${key} class="${
@@ -77,8 +82,10 @@ import {R} from './r.js';
           <button class="destroy" click=${() => deleteTodo(key)}></button>
         </div>
         ${editing ? R`<input class=edit value=${text}
-              keydown=${keyEvent => saveTodoIfEnter(keyEvent,key)}
-              blur=${() => saveTodo(key)}>`
+            ${{key:Math.random()+''}}
+            bond=${takeFocus}
+            keydown=${keyEvent => saveTodoIfEnter(keyEvent,key)}
+            blur=${e => saveTodo(e,key)}>`
           : ''
         }
       </li>
@@ -122,7 +129,6 @@ import {R} from './r.js';
   
   function updateTodo(todo) {
     save();
-    const node = root.querySelector(`[data-key="${todo.key}"]`);
     Todo(todo);
     TodoCount({activeCount:todos.filter(t => !t.completed).length});
   }
@@ -142,14 +148,6 @@ import {R} from './r.js';
     } else {
       todo.active = false;
     }
-    save();
-    Todo(todo);
-  }
-
-  function editTodo(todoKey) {
-    const todo = todos.find(({key}) => key == todoKey);
-    if ( todo.editing ) return;
-    todo.editing = true;
     updateTodo(todo);
   }
 
@@ -159,19 +157,18 @@ import {R} from './r.js';
       const todo = todos.splice(index,1); 
       save();
       updateList();
-      console.log(JSON.stringify({todoKey,index,todo,todos},null,2));
     } else {
       throw {error: {msg:`Cannot find todo with key ${todoKey}`}};
     }
   }
 
-  function saveTodo(todoKey) {
+  function saveTodo({target},todoKey) {
+    if ( ! todoKey ) return;
     const todo = todos.find(({key}) => key == todoKey);
-    if ( ! todo || ! todo.editing ) {
+    if ( ! todo ) {
       return;
     }
-    const node = root.querySelector('input.edit');
-    const text = node.value.trim();
+    const text = target.value.trim();
     if ( text.length == 0 ) {
       return deleteTodo(todoKey);
     }
@@ -179,6 +176,14 @@ import {R} from './r.js';
     todo.text = text;
     updateTodo(todo);
   }
+
+  function editTodo(todoKey) {
+    const todo = todos.find(({key}) => key == todoKey);
+    if ( todo.editing ) return;
+    todo.editing = true;
+    updateTodo(todo);
+  }
+
 
   function clearCompleted() {
     const completed = todos.filter(({completed}) => completed);
