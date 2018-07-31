@@ -130,8 +130,7 @@ import {R} from './r.js';
   function addTodo(todo) {
     todos.push(todo);
     save();
-    Todo(todo).to('.todo-list', 'afterBegin');
-    TodoCount({activeCount:todos.filter(t => !t.completed).length});
+    updateList();
   }
 
   function toggleCompleted({target},todoKey) {
@@ -187,9 +186,8 @@ import {R} from './r.js';
     TodoList(todos);
   }
 
-  function toggleAll({target:{checked}}) {
-    todos.forEach(t => t.completed = !!checked);
-    todos.forEach(t => Todo(t));
+  function toggleAll({target}) {
+    todos.forEach(t => toggleCompleted({target}, t.key));
   }
 
   function listAll() {
