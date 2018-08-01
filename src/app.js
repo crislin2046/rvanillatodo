@@ -49,7 +49,6 @@ import {R} from './r.js';
   }
 
   function Footer() {
-    console.log(todos.length);
     return R`${
       todos.length ? R`
         <footer class="footer">
