@@ -10,7 +10,7 @@ import {R} from './r.js';
   openApp();
 
   function openApp() {
-    App().to(root,'innerHTML');
+    App({list:todos}).to(root,'innerHTML');
     addEventListener('hashchange', routeHash);
     routeHash();
   }
@@ -21,7 +21,7 @@ import {R} from './r.js';
     routeHash();
   }
 
-  function App() {
+  function App({list}) {
     return R`
       <header class="header">
         <h1>todos</h1>
@@ -33,11 +33,28 @@ import {R} from './r.js';
         <input id="toggle-all" class="toggle-all" type="checkbox" click=${toggleAll}>
         <label for="toggle-all">Mark all as complete</label>
         <ul class=todo-list>
-          ${TodoList([])}
+          ${TodoList(list)}
         </ul>
+        ${Footer()}
+      </section>
+    `;
+  }
+
+  function TodoList(list) {
+    const retVal = R`
+      <!-- Todo List-->
+      ${list.map(Todo)}
+    `;
+    return retVal;
+  }
+
+  function Footer() {
+    console.log(todos.length);
+    return R`${
+      todos.length ? R`
         <footer class="footer">
           <span class="todo-count">
-            ${TodoCount({activeCount:0})}
+            ${TodoCount()}
           </span>
           <ul class="filters">
             <li>
@@ -52,16 +69,8 @@ import {R} from './r.js';
           </ul>
           <button click="${clearCompleted}" class=clear-completed>Clear completed</button>
         </footer>
-      </section>
-    `;
-  }
-
-  function TodoList(list) {
-    const retVal = R`
-      <!-- Todo List-->
-      ${list.map(Todo)}
-    `;
-    return retVal;
+      ` : R`<!-- Footer -->`
+    }`;
   }
 
   function takeFocus(el) {
@@ -93,7 +102,8 @@ import {R} from './r.js';
     `;
   }
 
-  function TodoCount({activeCount}) {
+  function TodoCount() {
+    const activeCount = todos.filter(t => !t.completed).length;
     return R`
       <span class="todo-count">
         <strong>${activeCount}</strong>
@@ -103,12 +113,14 @@ import {R} from './r.js';
   }
 
   function routeHash() {
-    switch(location.hash) {
-      case "#/active":                listActive(); break;
-      case "#/completed":             listCompleted(); break;
-      case "#/":          default:    listAll(); break;
+    if ( todos.length ) {
+      switch(location.hash) {
+        case "#/active":                listActive(); break;
+        case "#/completed":             listCompleted(); break;
+        case "#/":          default:    listAll(); break;
+      }
+      selectRoute(location.hash);
     }
-    selectRoute(location.hash);
   }
 
   function newKey(prefix) {
@@ -125,13 +137,13 @@ import {R} from './r.js';
 
   function updateList(list = todos) {
     TodoList(list);
-    TodoCount({activeCount:todos.filter(t => !t.completed).length});
+    Footer();
   }
   
   function updateTodo(todo) {
     save();
     Todo(todo);
-    TodoCount({activeCount:todos.filter(t => !t.completed).length});
+    TodoCount();
   }
 
   function addTodo(todo) {
@@ -189,7 +201,6 @@ import {R} from './r.js';
   function clearCompleted() {
     const completed = todos.filter(({completed}) => completed);
     completed.forEach(({key}) => deleteTodo(key));
-    TodoList(todos);
   }
 
   function toggleAll({target}) {
