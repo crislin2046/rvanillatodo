@@ -77,7 +77,8 @@ import {R} from './r.js';
           editing ? 'editing' : ''}">
         <div class="view">
           <input class="toggle" type="checkbox" 
-            ${completed ? 'checked':''} input=${e => toggleCompleted(e,key)}>
+            ${completed ? 'checked':''} 
+            change=${e => toggleCompleted(e,key)}>
           <label touchstart=${() => editTodo(key)} dblclick=${() => editTodo(key)}>${text}</label>
           <button class="destroy" click=${() => deleteTodo(key)}></button>
         </div>
