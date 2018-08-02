@@ -48,27 +48,28 @@ import {R} from './r.js';
   }
 
   function Footer() {
-    return R`${
-      todos.length ? R`
-        <footer class="footer">
-          <span class="todo-count">
-            ${TodoCount()}
-          </span>
-          <ul class="filters">
-            <li>
-              <a href="#/" click=${changeHash} class="selected">All</a>
-            </li>
-            <li>
-              <a href="#/active" click=${changeHash}>Active</a>
-            </li>
-            <li>
-              <a href="#/completed" click=${changeHash}>Completed</a>
-            </li>
-          </ul>
-          <button click="${clearCompleted}" class=clear-completed>Clear completed</button>
-        </footer>
-      ` : R` `
-    }`;
+    return R`
+      <footer class="${todos.length ? '' : 'hidden' } footer">
+        <span class="todo-count">
+          ${TodoCount()}
+        </span>
+        <ul class="filters">
+          <li>
+            <a href="#/" click=${changeHash}
+              class="${location.hash == "#/" ? 'selected' : ''}">All</a>
+          </li>
+          <li>
+            <a href="#/active" click=${changeHash}
+              class="${location.hash == "#/active" ? 'selected' : ''}">Active</a>
+          </li>
+          <li>
+            <a href="#/completed" click=${changeHash}
+              class="${location.hash == "#/completed" ? 'selected' : ''}">Completed</a>
+          </li>
+        </ul>
+        <button click="${clearCompleted}" class=clear-completed>Clear completed</button>
+      </footer>
+    `;
   }
 
   function takeFocus(el) {
@@ -111,13 +112,10 @@ import {R} from './r.js';
   }
 
   function routeHash() {
-    if ( todos.length ) {
-      switch(location.hash) {
-        case "#/active":                listActive(); break;
-        case "#/completed":             listCompleted(); break;
-        case "#/":          default:    listAll(); break;
-      }
-      selectRoute(location.hash);
+    switch(location.hash) {
+      case "#/active":                listActive(); break;
+      case "#/completed":             listCompleted(); break;
+      case "#/":          default:    listAll(); break;
     }
   }
 
@@ -166,12 +164,14 @@ import {R} from './r.js';
     }
   }
 
-  function deleteTodo(todoKey) {
+  function deleteTodo(todoKey, {noRoute:noRoute = false} = {}) {
     const index = todos.findIndex(({key}) => key == todoKey);
     if ( index >= 0 ) {
       const todo = todos.splice(index,1); 
       save();
-      updateList();
+      if ( !noRoute ) {
+        routeHash();
+      }
     } else {
       throw {error: {msg:`Cannot find todo with key ${todoKey}`}};
     }
@@ -202,7 +202,8 @@ import {R} from './r.js';
 
   function clearCompleted() {
     const completed = todos.filter(({completed}) => completed);
-    completed.forEach(({key}) => deleteTodo(key));
+    completed.forEach(({key}) => deleteTodo(key,{noRoute:true}));
+    routeHash();
   }
 
   function toggleAll({target}) {
@@ -247,13 +248,5 @@ import {R} from './r.js';
     };
     addTodo(todo);
     source.value = '';
-  }
-
-  function selectRoute(hash) {
-    const selectedRoute = root.querySelector(`a[href="${hash}"]`) || AllRouteLink ||
-      (AllRouteLink = root.querySelector(`a[href="#/"]`));
-    const lastSelectedRoute = root.querySelector(`.filters a.selected`);
-    lastSelectedRoute.classList.remove('selected');
-    selectedRoute.classList.add('selected');
   }
 }
