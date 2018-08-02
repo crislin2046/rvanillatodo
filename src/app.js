@@ -42,7 +42,6 @@ import {R} from './r.js';
 
   function TodoList(list) {
     const retVal = R`
-      <!-- Todo List-->
       ${list.map(Todo)}
     `;
     return retVal;
@@ -68,7 +67,7 @@ import {R} from './r.js';
           </ul>
           <button click="${clearCompleted}" class=clear-completed>Clear completed</button>
         </footer>
-      ` : R`<!-- Footer -->`
+      ` : R` `
     }`;
   }
 
@@ -148,10 +147,11 @@ import {R} from './r.js';
   function addTodo(todo) {
     todos.push(todo);
     save();
-    updateList();
+    //updateList();
+    routeHash();
   }
 
-  function toggleCompleted({target},todoKey) {
+  function toggleCompleted({target},todoKey,{noRoute:noRoute = false} = {}) {
     const checked = target.checked;
     const todo = todos.find(({key}) => key == todoKey);
     todo.completed = target.checked;
@@ -161,6 +161,9 @@ import {R} from './r.js';
       todo.active = false;
     }
     updateTodo(todo);
+    if ( !noRoute ) {
+      setTimeout(routeHash,500);
+    }
   }
 
   function deleteTodo(todoKey) {
@@ -203,7 +206,8 @@ import {R} from './r.js';
   }
 
   function toggleAll({target}) {
-    todos.forEach(t => toggleCompleted({target}, t.key));
+    todos.forEach(t => toggleCompleted({target}, t.key, {noRoute:true}));
+    setTimeout(routeHash,500);
   }
 
   function listAll() {
@@ -222,7 +226,7 @@ import {R} from './r.js';
     if ( keyEvent.key !== 'Enter' ) {
       return;
     }
-    saveTodo(key);
+    saveTodo(keyEvent,key);
   }
 
   function newTodoIfEnter(keyEvent) {

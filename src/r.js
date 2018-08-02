@@ -88,6 +88,7 @@
   }
 
   function makeUpdaters({walker,vmap,externals}) {
+    //FIXME: If values are empty, things can fuck up.
     let node = walker.currentNode;
     switch( node.nodeType ) {
       case Node.ELEMENT_NODE:
@@ -133,7 +134,11 @@
             //s({update:{lastAnchor}});
           } else {
             //s({noNodes:{lastAnchor}});
-            const placeholderNode = toDOM(`<meta name=placeholder>`).firstElementChild;
+            // find or create a placeholder 
+            // FIXME: we might need to use comment node since perhaps
+            // meta is disallowed in some places 
+            const placeholderNode = lastAnchor.parentNode.querySelector('meta[name="placeholder"]') || toDOM(`<meta name=placeholder>`).firstElementChild;
+            //s({placeholderNode});
             lastAnchor.parentNode.insertBefore(placeholderNode,lastAnchor.nextSibling);
             lastAnchor = placeholderNode;
             //s({update:{lastAnchor}});
@@ -236,7 +241,6 @@
           default:
             lengths[valIndex] = newVal.length;
             const attr = node.getAttribute(name);
-            console.log(attr);
             if ( attr !== newVal ) {
               const lengthBefore = lengths.slice(0,valIndex).reduce((sum,x) => sum + x, 0);
 
