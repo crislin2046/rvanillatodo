@@ -3,7 +3,7 @@
   // That comes later.
 "use strict";
   const DEBUG             = true;
-  const KEYMATCH          = / ?(key\d+) ?/gm;
+  const KEYMATCH          = / ?(?:<!\-\-)?(key\d+)(?:\-\->)? ?/gm;
   const KEYLEN            = 20;
   const OURPROPS          = 'code,externals,nodes,to,update,v';
   const CODE              = ''+Math.random();
@@ -69,6 +69,7 @@
       case Node.ELEMENT_NODE:
         handleElementNode({node,vmap,externals});
       break;
+      case Node.COMMENT_NODE:
       case Node.TEXT_NODE:
         handleTextNode({node,vmap,externals});
       break;
@@ -79,7 +80,7 @@
 
   function handleTextNode({node,vmap,externals}) {
     const lengths = [];
-    const text = node.wholeText; 
+    const text = node.nodeValue; 
     let result;
     while( result = KEYMATCH.exec(text) ) {
       const {index} = result;
@@ -269,8 +270,13 @@
       if ( !! val.key ) {
         return '';
       }
-      const k = (' key'+Math.random()+' ').replace('.','').padEnd(KEYLEN,'0').slice(0,KEYLEN);
-      vmap[k.trim()] = {vi,val,replacers:[]};
+      const rand = (Math.random()+'').replace('.','').padEnd(KEYLEN,'0').slice(0,KEYLEN);
+      const K = ` key${rand} `;
+      let k = K;
+      if ( onlyOurProps(val) && verify(val) ) {
+        k = (` <!--${K}--> `);
+      }
+      vmap[K.trim()] = {vi,val,replacers:[]};
       return k;
     };
   }
