@@ -3,7 +3,7 @@
   // That comes later.
 "use strict";
   const DEBUG             = true;
-  const KEYMATCH          = / ?(?:<!\-\-)?(key\d+)(?:\-\->)? ?/gm;
+  const KEYMATCH          = / ?(?:<!\-\-)? ?(key\d+) ?(?:\-\->)? ?/gm;
   const KEYLEN            = 20;
   const OURPROPS          = 'code,externals,nodes,to,update,v';
   const CODE              = ''+Math.random();
@@ -190,7 +190,6 @@
     } else {
       return (newVal) => {
         const originalLengthBefore = Object.keys(lengths.slice(0,valIndex)).length*KEYLEN;
-        lengths[valIndex] = newVal.length;
         val.val = newVal;
         switch(typeof newVal) {
           case "function":
@@ -211,7 +210,9 @@
             oldVal = newVal;
           break;
           default:
+            lengths[valIndex] = newVal.length;
             const attr = node.getAttribute(name);
+            console.log(attr);
             if ( attr !== newVal ) {
               const lengthBefore = lengths.slice(0,valIndex).reduce((sum,x) => sum + x, 0);
 
@@ -270,13 +271,13 @@
       if ( !! val.key ) {
         return '';
       }
-      const rand = (Math.random()+'').replace('.','').padEnd(KEYLEN,'0').slice(0,KEYLEN);
-      const K = ` key${rand} `;
-      let k = K;
+      const key = (' key'+Math.random()).replace('.','').padEnd(KEYLEN,'0').slice(0,KEYLEN);
+      let k = key;
       if ( onlyOurProps(val) && verify(val) ) {
-        k = (` <!--${K}--> `);
+        k = (`<!--${k}-->`);
       }
-      vmap[K.trim()] = {vi,val,replacers:[]};
+      k = `${k} `;
+      vmap[key.trim()] = {vi,val,replacers:[]};
       return k;
     };
   }
