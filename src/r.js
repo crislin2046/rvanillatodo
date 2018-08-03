@@ -4,7 +4,6 @@
 "use strict";
   const DEBUG             = true;
   const KEYMATCH          = / ?(?:<!\-\-)? ?(key\d+) ?(?:\-\->)? ?/gm;
-  const LAST_ATTR_NAME    = /\s+([\w-]+)\s*=\s*"?\s*$/;
   const KEYLEN            = 20;
   const OURPROPS          = 'code,externals,nodes,to,update,v';
   const CODE              = ''+Math.random();
@@ -26,32 +25,8 @@
   const isKey             = v => typeof v === "object" &&  v.key !== null && v.key !== undefined;
   const cache = {};
 
-  Object.assign(R,{s});
+  Object.assign(R,{s,skip,die});
   export {R,X};
-
-  function X(p,...v) {
-    v = v.map(parseVal);
-
-    p = [...p]; 
-    const vmap = {};
-    const V = v.map(replaceVal(vmap));
-    const externals = [];
-    let str = '';
-
-    while( p.length > 1 ) str += p.shift() + V.shift();
-    str += p.shift();
-
-    const frag = toDOM(str);
-    const walker = document.createTreeWalker(frag, NodeFilter.SHOW_ALL);
-
-    do {
-      makeUpdaters({walker,vmap,externals});
-    } while(walker.nextNode())
-
-    const retVal = {externals,v:Object.values(vmap),to,
-      update,code:CODE,nodes:[...frag.childNodes]};
-    return retVal;
-  }
 
   function R(p,...v) {
     v = v.map(parseVal);
@@ -85,6 +60,30 @@
     } else {
       cache[cacheKey] = retVal;
     }
+    return retVal;
+  }
+
+  function X(p,...v) {
+    v = v.map(parseVal);
+
+    p = [...p]; 
+    const vmap = {};
+    const V = v.map(replaceVal(vmap));
+    const externals = [];
+    let str = '';
+
+    while( p.length > 1 ) str += p.shift() + V.shift();
+    str += p.shift();
+
+    const frag = toDOM(str);
+    const walker = document.createTreeWalker(frag, NodeFilter.SHOW_ALL);
+
+    do {
+      makeUpdaters({walker,vmap,externals});
+    } while(walker.nextNode())
+
+    const retVal = {externals,v:Object.values(vmap),to,
+      update,code:CODE,nodes:[...frag.childNodes]};
     return retVal;
   }
 
@@ -294,6 +293,12 @@
       cached.update(v);
     }
     return {cached,firstCall};
+  }
+
+  function skip(str) {
+    str = (str || "")+'';
+    /* allow the thing to pass without replacement */
+    return { str, handlers: {}, code: currentKey };
   }
 
   function replaceVal(vmap) {
