@@ -4,6 +4,7 @@
 "use strict";
   const DEBUG             = true;
   const KEYMATCH          = / ?(?:<!\-\-)? ?(key\d+) ?(?:\-\->)? ?/gm;
+  const LAST_ATTR_NAME    = /\s+([\w-]+)\s*=\s*"?\s*$/;
   const KEYLEN            = 20;
   const OURPROPS          = 'code,externals,nodes,to,update,v';
   const CODE              = ''+Math.random();
@@ -22,7 +23,7 @@
   const INSERT            = () => `Error inserting template into DOM. ` +
                             `Position must be one of: ` +
                             `replace, beforeBegin, afterBegin, beforeEnd, innerHTML, afterEnd`;
-  const isKey             = v => typeof v === "object" &&  typeof v.key == "string";
+  const isKey             = v => typeof v === "object" &&  v.key !== null && v.key !== undefined;
   const cache = {};
 
   Object.assign(R,{s});
@@ -208,7 +209,8 @@
                 node[oldName] = undefined;
               }
               if ( !! newVal ) {
-                node.setAttribute(newVal,''); 
+                console.log(node);
+                node.setAttribute(newVal.trim(),''); 
                 // FIXME: IDL
                 node[newVal] = true;
               }
@@ -299,12 +301,12 @@
       if ( !! val.key ) {
         return '';
       }
-      const key = (' key'+Math.random()).replace('.','').padEnd(KEYLEN,'0').slice(0,KEYLEN);
+      const key = ('key'+Math.random()).replace('.','').padEnd(KEYLEN,'0').slice(0,KEYLEN);
       let k = key;
       if ( onlyOurProps(val) && verify(val) ) {
         k = (`<!--${k}-->`);
       }
-      k = `${k} `;
+      k = `${k}`;
       vmap[key.trim()] = {vi,val,replacers:[]};
       return k;
     };
