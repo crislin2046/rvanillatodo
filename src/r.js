@@ -1,8 +1,9 @@
-// Note: 
-  // now is not the time for optimization. 
-  // That comes later.
 "use strict";
   const DEBUG             = true;
+  const BROWSER_SIDE      = (() => {try{ return self.DOMParser && true; } catch(e) { return false; }})();
+  // Shouldn't this match attrs that have text as well? currently it matches name=" but not name="asda 
+  const LAST_ATTR_NAME    = /\s+([\w-]+)\s*=\s*"?\s*$/;
+  const NEW_TAG           = /<\w+/g;
   const KEYMATCH          = / ?(?:<!\-\-)? ?(key\d+) ?(?:\-\->)? ?/gm;
   const KEYLEN            = 20;
   const OURPROPS          = 'code,externals,nodes,to,update,v';
@@ -25,10 +26,37 @@
   const isKey             = v => typeof v === "object" &&  v.key !== null && v.key !== undefined;
   const cache = {};
 
-  Object.assign(R,{s,skip,die});
+  Object.assign(R,{s,skip,die,BROWSER_SIDE});
+
   export {R,X};
 
+  function X(p,...v) {
+    v = v.map(parseVal);
+
+    p = [...p]; 
+    const vmap = {};
+    const V = v.map(replaceVal(vmap));
+    const externals = [];
+    let str = '';
+
+    while( p.length > 1 ) str += p.shift() + V.shift();
+    str += p.shift();
+
+    const frag = toDOM(str);
+    const walker = document.createTreeWalker(frag, NodeFilter.SHOW_ALL);
+
+    do {
+      makeUpdaters({walker,vmap,externals});
+    } while(walker.nextNode())
+
+    const retVal = {externals,v:Object.values(vmap),to,
+      update,code:CODE,nodes:[...frag.childNodes]};
+    return retVal;
+  }
+
   function R(p,...v) {
+    if ( ! BROWSER_SIDE ) return S(p,...v);
+
     v = v.map(parseVal);
 
     const {key:instanceKey} = (v.find(isKey) || {});
@@ -63,28 +91,85 @@
     return retVal;
   }
 
-  function X(p,...v) {
-    v = v.map(parseVal);
+  function S(parts, ...vals) {
+    const handlers = {};
+    let hid, lastNewTagIndex, lastTagName, str = '';
 
-    p = [...p]; 
-    const vmap = {};
-    const V = v.map(replaceVal(vmap));
-    const externals = [];
-    let str = '';
+    parts = [...parts];
 
-    while( p.length > 1 ) str += p.shift() + V.shift();
-    str += p.shift();
+    const keyObj = vals.find( v => !!v && v.key !== undefined ) || {};
+    const {key:key='singleton'} = keyObj;
 
-    const frag = toDOM(str);
-    const walker = document.createTreeWalker(frag, NodeFilter.SHOW_ALL);
+    vals = vals.map(SparseValue);
 
-    do {
-      makeUpdaters({walker,vmap,externals});
-    } while(walker.nextNode())
+    while (parts.length > 1) {
+      let part = parts.shift();
+      let attrNameMatches = part.match(LAST_ATTR_NAME);
+      let newTagMatches = part.match(NEW_TAG);
+      let val = vals.shift();
+      if (newTagMatches) {
+        if ( handlers[hid] ) str = markInsertionPoint({str,lastNewTagIndex,lastTagName,hid});
+        hid = `hid_${Math.random()}`.replace('.','');
+        const lastTag = newTagMatches[newTagMatches.length-1];
+        lastNewTagIndex = part.lastIndexOf(lastTag) + str.length;
+        lastTagName = lastTag.slice(1);
+      }
+      if (typeof val === 'function') {
+        const attrName = attrNameMatches && attrNameMatches.length > 1
+            ? attrNameMatches[1].replace(/^on/,'').toLowerCase()
+            : false,
+          newPart = part.replace(attrNameMatches[0], '');
+        str += attrName ? newPart : part;
+        if ( !Array.isArray(handlers[hid]) ) handlers[hid] = [];
+        handlers[hid].push({eventName: attrName, handler: val});
+      } else if (!!val && !!val.handlers && typeof val.str == "string") {
+        Object.assign(handlers,val.handlers);
+        str += part;
+        val = val.str;
+        if (attrNameMatches) val = `${val}`;
+        str += val;
+      } else {
+        str += part;
+        str += attrNameMatches ? `${safe(val)}` : safe(val);
+      }
+    }
+    if ( handlers[hid] ) str = markInsertionPoint({str,lastNewTagIndex,lastTagName,hid});
+    str += parts.shift();
 
-    const retVal = {externals,v:Object.values(vmap),to,
-      update,code:CODE,nodes:[...frag.childNodes]};
-    return retVal;
+    return {str,handlers,to,code:CODE};
+  }
+
+  function isCached(cacheKey,v,instanceKey) {
+    let firstCall;
+    let cached = cache[cacheKey];
+    if ( cached == undefined ) {
+      cached = cache[cacheKey] = {};
+      if ( !! instanceKey ) {
+        cached.instances = {};
+        cached = cached.instances[instanceKey] = {};
+      }
+      firstCall = true;
+    } else {
+      if ( !! instanceKey ) {
+        if ( ! cached.instances ) {
+          cached.instances = {};
+          firstCall = true;
+        } else {
+          cached = cached.instances[instanceKey];
+          if ( ! cached ) {
+            firstCall = true;
+          } else {
+            firstCall = false;
+          }
+        }
+      } else {
+        firstCall = false;
+      }
+    }
+    if ( ! firstCall ) {
+      cached.update(v);
+    }
+    return {cached,firstCall};
   }
 
   function makeUpdaters({walker,vmap,externals}) {
@@ -100,6 +185,35 @@
       break;
       default:
       break;
+    }
+  }
+
+  function markInsertionPoint({str,lastNewTagIndex,lastTagName,hid}) {
+    const before = str.slice(0,lastNewTagIndex);
+    const after = str.slice(lastNewTagIndex);
+    return before + `<!--${hid}-->` + after;
+  }
+
+  function SparseValue(v) {
+    if (Array.isArray(v) && v.every(item => !!item.handlers && !!item.str)) {
+      return Sjoin(v) || '';
+    } else if (typeof v === 'object' && !!v) {
+      if (!!v.str && !!v.handlers) {
+        return v;
+      }
+      throw {error: OBJ(), value: v};
+    } else return v === null || v === undefined ? '' : v;
+  }
+
+  function Sjoin(rs) {
+    const H = {};
+    const str = rs.map(({str,handlers,code}) => (
+        verify({str,handlers,code},CODE),Object.assign(H,handlers),str)).join('\n');
+
+    if (str) {
+      const o = {str,handlers:H};
+      o.code = CODE;
+      return o;
     }
   }
 
@@ -208,7 +322,6 @@
                 node[oldName] = undefined;
               }
               if ( !! newVal ) {
-                console.log(node);
                 node.setAttribute(newVal.trim(),''); 
                 // FIXME: IDL
                 node[newVal] = true;
@@ -262,43 +375,46 @@
     }
   }
 
-  function isCached(cacheKey,v,instanceKey) {
-    let firstCall;
-    let cached = cache[cacheKey];
-    if ( cached == undefined ) {
-      cached = cache[cacheKey] = {};
-      if ( !! instanceKey ) {
-        cached.instances = {};
-        cached = cached.instances[instanceKey] = {};
-      }
-      firstCall = true;
-    } else {
-      if ( !! instanceKey ) {
-        if ( ! cached.instances ) {
-          cached.instances = {};
-          firstCall = true;
-        } else {
-          cached = cached.instances[instanceKey];
-          if ( ! cached ) {
-            firstCall = true;
-          } else {
-            firstCall = false;
-          }
-        }
-      } else {
-        firstCall = false;
-      }
-    }
-    if ( ! firstCall ) {
-      cached.update(v);
-    }
-    return {cached,firstCall};
+  function hydrate(handlers) {
+    const hids = getHids(document);
+
+    Object.entries(handlers).forEach(
+      ([hid,nodeHandlers]) => activateNode(hids,{hid,nodeHandlers}));
   }
 
-  function skip(str) {
-    str = (str || "")+'';
-    /* allow the thing to pass without replacement */
-    return { str, handlers: {}, code: currentKey };
+  function activateNode(hids,{hid,nodeHandlers}) {
+    const hidNode = hids[hid];
+    let node;
+
+    if (!!hidNode) {
+      node = hidNode.nextElementSibling;
+      hidNode.remove();
+    } else throw {error:MARKER(hid)}
+
+    const bondHandlers = [];
+
+    if (!!node && !!nodeHandlers) {
+      nodeHandlers.forEach(({eventName,handler}) => {
+        handler = revive(handler);
+        if ( eventName == 'bond' ) {
+          bondHandlers.push(()  => handler(node));
+        } else node.addEventListener(eventName,handler);
+      });
+    } else throw {error: HID(hid)} 
+
+    bondHandlers.forEach(f => f());
+  }
+
+  function getHids(parent) {
+    const walker = document.createTreeWalker(parent,NodeFilter.SHOW_COMMENT,{acceptNode: node => node.nodeType == Node.COMMENT_NODE && node.nodeValue.startsWith('hid_')});
+    const hids = {};
+    do{
+      const node = walker.currentNode;
+      if ( node.nodeType == Node.COMMENT_NODE && node.nodeValue.startsWith("hid_") ) {
+        hids[node.data] = node;
+      }
+    } while(walker.nextNode());
+    return hids;
   }
 
   function replaceVal(vmap) {
@@ -343,10 +459,6 @@
     return v+'';
   }
 
-  function itemIsFine(v) {
-    return onlyOurProps(v) && verify(v);
-  }
-
   function join(os) {
     const externals = [];
     const bigNodes = [];
@@ -355,17 +467,49 @@
     return retVal;
   }
 
-  function to(selector, position = 'replace') {
-    const frag = document.createDocumentFragment();
-    this.nodes.forEach(n => frag.appendChild(n));
-    const elem = selector instanceof Node ? selector : document.querySelector(selector);
-    try {
-      MOVE[position](frag,elem);
-    } catch(e) {
-      die({error: INSERT()},e);
-    }
-    while(this.externals.length) {
-      this.externals.shift()();
+  function to(location, position = 'replace') {
+    if ( ! BROWSER_SIDE ) {
+      const {str,handlers} = this;
+      const page = `
+        <html lang=en>
+          <!DOCTYPE html>
+          <meta charset=utf8>
+          <body> 
+            ${str}
+            <script>
+              const hydration = ${JSON.stringify(handlers,(k,v) => typeof v == "function" ? v.toString() : v)};
+
+              hydrate(hydration);
+
+              document.currentScript.remove();
+
+              ${hydrate.toString()}
+
+              ${activateNode.toString()}
+
+              ${getHids.toString()}
+
+              function revive(fstr) {
+                const f = eval(fstr);
+                return f;
+              }
+            </script>
+          </body>
+        </html>
+      `;
+      location.send(page); 
+    } else {
+      const frag = document.createDocumentFragment();
+      this.nodes.forEach(n => frag.appendChild(n));
+      const elem = location instanceof Node ? location : document.querySelector(location);
+      try {
+        MOVE[position](frag,elem);
+      } catch(e) {
+        die({error: INSERT()},e);
+      }
+      while(this.externals.length) {
+        this.externals.shift()();
+      }
     }
   }
 
@@ -379,12 +523,26 @@
     this.v.forEach(({vi,replacers}) => replacers.forEach(f => f(newVals[vi])));
   }
 
+  function itemIsFine(v) {
+    return onlyOurProps(v) && verify(v);
+  }
+
   function onlyOurProps(v) {
     return OURPROPS === Object.keys(v||{}).sort().filter(p => p !== 'instances').join(',');
   }
 
   function verify(v) {
     return CODE === v.code;
+  }
+
+  function safe (v) {
+    return String(v).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&/g,'&amp;').replace(/"/g,'&#34;').replace(/'/g,'&#39;');
+  }
+
+  function skip(str) {
+    str = (str || "")+'';
+    /* allow the thing to pass without replacement */
+    return { str, handlers: {}, code: CODE };
   }
 
   function die(msg,err) {
