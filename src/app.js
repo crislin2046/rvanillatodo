@@ -1,6 +1,5 @@
-"use strict";
-import {R} from './r.js';
-{
+import {R} from 'https://unpkg.com/brutalist-web/r.js';
+
   const root = document.querySelector('.todoapp');
   const todos = load();
   const session = Math.random()+'';
@@ -249,4 +248,3 @@ import {R} from './r.js';
     addTodo(todo);
     source.value = '';
   }
-}
